@@ -1,0 +1,61 @@
+#include "BluetoothSerial.h"
+#include <OneWire.h>
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+#endif
+
+BluetoothSerial SerialBT;
+const int analogPin1 = 14;
+const int analogPin2 = 15;
+int ADC1 = 0;
+int ADC2 = 0;
+int vv1 = 20;
+int vv2 = 10;
+int vDiff = 10; 
+int ledPin =2;  
+OneWire oneWire(vDiff); 
+String message = "";
+char incomingChar;
+String temperatureString = "";
+unsigned long previousMillis = 0;    // Stores last time temperature was published
+const long interval = 10000;     
+void setup() {
+  Serial.begin(115200);
+  pinMode (analogPin1, INPUT);
+  pinMode (analogPin2, INPUT);
+  pinMode (ledPin, OUTPUT);
+  SerialBT.begin("ESP32test"); //Bluetooth device name
+  Serial.println("The device started, now you can pair it with bluetooth!");
+  delay(10);
+}
+
+void loop() {
+ unsigned long currentMillis = millis();
+ if (currentMillis - previousMillis >= interval){
+ previousMillis = currentMillis;
+ ADC1 = analogRead(analogPin1);
+ ADC2 = analogRead(analogPin2);
+ vv1 = (ADC1 * 3.3)/(4095);
+ vv2 = (ADC2 * 3.3)/(4095);
+ vDiff = (vv1 - vv2)/10;
+ temperatureString = String(vDiff);
+ SerialBT.println(vDiff);
+ Serial.print(vDiff);}
+ if (Serial.available()) {
+    char incomingChar = SerialBT.read();
+    if (incomingChar != '\n'){
+      message += String(incomingChar);
+    }
+    else{
+      message = "";
+    }
+    Serial.write(incomingChar);
+  }
+if (message =="led_on"){
+    digitalWrite(ledPin, HIGH);
+  }
+  else if (message =="led_off"){
+    digitalWrite(ledPin, LOW);
+  }
+  delay(20);
+}
